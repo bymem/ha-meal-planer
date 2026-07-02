@@ -16,11 +16,13 @@ class MealPlannerCard extends HTMLElement {
   static getConfigForm() {
     return {
       schema: [
+        { name: "title", selector: { text: {} } },
         { name: "show_full_list", selector: { boolean: {} } },
         { name: "show_freezer_flag", selector: { boolean: {} } },
       ],
       computeLabel: (schemaItem) =>
         ({
+          title: "Card title",
           show_full_list: "Show full meal list",
           show_freezer_flag: "Show freezer flag",
         })[schemaItem.name] || schemaItem.name,
@@ -28,11 +30,12 @@ class MealPlannerCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { show_full_list: true, show_freezer_flag: true };
+    return { title: "Meal Planner", show_full_list: true, show_freezer_flag: true };
   }
 
   setConfig(config) {
     this._config = {
+      title: config.title || "Meal Planner",
       show_full_list: config.show_full_list !== false,
       show_freezer_flag: config.show_freezer_flag !== false,
     };
@@ -62,7 +65,7 @@ class MealPlannerCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>${this._styles()}</style>
-      <ha-card header="Meal Planner">
+      <ha-card>
         <div class="content">
           <div class="today-tomorrow">
             <div class="slot">
@@ -81,6 +84,14 @@ class MealPlannerCard extends HTMLElement {
         </div>
       </ha-card>
     `;
+
+    // Set as a property rather than an HTML attribute above — the title
+    // comes from user config and this avoids any attribute-escaping
+    // concerns with quote characters in it.
+    const card = this.shadowRoot.querySelector("ha-card");
+    if (card) {
+      card.header = this._config.title;
+    }
   }
 
   _freezerBadge(stateObj) {
@@ -92,23 +103,24 @@ class MealPlannerCard extends HTMLElement {
 
   _renderQueue(queue) {
     if (!queue.length) {
-      return '<div class="empty">No meals in the queue.</div>';
+      return '<div class="queue"><div class="empty">No meals in the queue.</div></div>';
     }
     return `
       <div class="queue">
         <div class="queue-title">Full queue</div>
-        <ol class="queue-list">
+        <div class="queue-list">
           ${queue
             .map(
-              (meal) => `
-                <li>
+              (meal, index) => `
+                <div class="queue-item">
+                  <span class="queue-index">${index + 1}</span>
                   <span class="name">${this._escape(meal.name)}</span>
                   ${this._config.show_freezer_flag && meal.in_freezer ? '<span class="freezer-badge">Freezer</span>' : ""}
-                </li>
+                </div>
               `
             )
             .join("")}
-        </ol>
+        </div>
       </div>
     `;
   }
@@ -126,12 +138,15 @@ class MealPlannerCard extends HTMLElement {
       .slot { flex: 1; padding: 10px; border-radius: 8px; background: var(--secondary-background-color, rgba(0, 0, 0, 0.04)); }
       .slot-label { display: block; font-size: 0.8em; opacity: 0.7; }
       .slot-value { font-size: 1.05em; font-weight: 600; }
-      .queue { margin-top: 12px; }
-      .queue-title { font-size: 0.85em; opacity: 0.7; margin-bottom: 4px; }
-      .queue-list { margin: 0; padding-left: 20px; }
-      .queue-list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
-      .freezer-badge { font-size: 0.75em; padding: 2px 8px; border-radius: 10px; background: var(--divider-color, #e0e0e0); opacity: 0.85; }
-      .empty { opacity: 0.6; padding: 8px 0 0; font-size: 0.9em; }
+      .queue { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--secondary-background-color, rgba(0, 0, 0, 0.04)); }
+      .queue-title { font-size: 0.8em; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 6px; }
+      .queue-list { display: flex; flex-direction: column; }
+      .queue-item { display: flex; align-items: center; gap: 10px; padding: 6px 2px; }
+      .queue-item + .queue-item { border-top: 1px solid var(--divider-color, rgba(0, 0, 0, 0.08)); }
+      .queue-index { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%; background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); font-size: 0.7em; font-weight: 600; }
+      .queue-item .name { flex: 1; }
+      .freezer-badge { font-size: 0.75em; padding: 2px 8px; border-radius: 10px; background: var(--card-background-color, #fff); opacity: 0.85; }
+      .empty { opacity: 0.6; font-size: 0.9em; }
     `;
   }
 }

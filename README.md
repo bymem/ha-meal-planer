@@ -26,11 +26,12 @@ A Home Assistant custom integration for planning meals as a simple **queue** —
 
 ```yaml
 type: custom:meal-planner-card
+title: Meal Planner
 show_full_list: true
 show_freezer_flag: true
 ```
 
-Both options also show up as toggles in the card's own GUI editor. It's read-only — use the sidebar panel or services to make changes.
+All three options also show up in the card's own GUI editor. It's read-only — use the sidebar panel or services to make changes.
 
 ## Services
 
