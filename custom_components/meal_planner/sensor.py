@@ -73,6 +73,15 @@ class MealPlannerSensorBase(SensorEntity):
                 "meal_id": meal["id"],
             }
 
+        if self._queue_index == 0:
+            # The full un-eaten queue, exposed only on the today sensor so
+            # the read-only dashboard card can render it reactively via
+            # hass.states, without a separate REST poll.
+            self._attr_extra_state_attributes["queue"] = [
+                {"id": m["id"], "name": m["name"], "in_freezer": m["in_freezer"]}
+                for m in upcoming
+            ]
+
         # Only write state once the entity is actually registered; during
         # the initial call from async_added_to_hass this is always true,
         # but the guard keeps this method safe to call from anywhere.

@@ -1,14 +1,15 @@
 """The Meal Planner integration.
 
-Wires together storage, the REST API, the HA services, the sensors and
-the sidebar panel. Services and REST endpoints both call the same
-MealStorage methods and fire the same dispatcher signal, so there is a
-single source of truth for every mutation path.
+Wires together storage, the REST API, the HA services, the sensors,
+the sidebar panel and the dashboard card. Services and REST endpoints
+both call the same MealStorage methods and fire the same dispatcher
+signal, so there is a single source of truth for every mutation path.
 
-HTTP views and services are registered in async_setup (called exactly
-once per HA process, regardless of how many times the config entry is
-reloaded) because aiohttp routes cannot be unregistered — registering
-them again on every config entry setup would raise on reload. The
+HTTP views, services and the dashboard card's auto-load registration
+are all set up in async_setup (called exactly once per HA process,
+regardless of how many times the config entry is reloaded) because
+none of them can be cleanly unregistered — doing so again on every
+config entry setup would raise or double-register on reload. The
 panel and sensors, which *do* support clean teardown, are scoped to
 the config entry instead.
 """
@@ -22,7 +23,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
-from . import panel
+from . import frontend
 from .api import (
     MealPlannerMealEatenView,
     MealPlannerMealsView,
@@ -60,7 +61,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     _register_http_views(hass, storage)
     _register_services(hass, storage)
-    await panel.async_register_static_path(hass)
+    await frontend.async_register_static_path(hass)
+    frontend.async_register_card(hass)
 
     return True
 
@@ -70,7 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     storage: MealStorage = hass.data[DOMAIN]["storage"]
     hass.data[DOMAIN][entry.entry_id] = {"storage": storage}
 
-    await panel.async_register_panel(hass)
+    await frontend.async_register_panel(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -78,12 +80,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a Meal Planner config entry: panel + sensors.
 
-    HTTP views and services stay registered for the life of the HA
-    process — see the async_setup docstring for why.
+    HTTP views, services and the dashboard card stay registered for the
+    life of the HA process — see the async_setup docstring for why.
     """
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        panel.async_remove_panel(hass)
+        frontend.async_remove_panel(hass)
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unloaded

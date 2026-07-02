@@ -1,21 +1,22 @@
-"""Registers the Meal Planner sidebar panel.
+"""Registers the Meal Planner sidebar panel and dashboard card.
 
-The panel is a plain web component. Its JS ships inside this
-integration's own package (custom_components/meal_planner/www/) and is
-served via a static path registered by this integration — not HACS's
-/hacsfiles/, which only serves files for "plugin" category repos, not
-"integration" ones (see const.py for the full explanation).
+Both are plain web components shipped inside this integration's own
+package (custom_components/meal_planner/www/) and served via a static
+path registered by this integration — not HACS's /hacsfiles/, which
+only serves files for "plugin" category repos, not "integration" ones
+(see const.py for the full explanation).
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from homeassistant.components import panel_custom
+from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.frontend import async_remove_panel as _async_remove_panel
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
-from .const import PANEL_MODULE_URL, PANEL_STATIC_URL_PATH, PANEL_URL_PATH
+from .const import CARD_MODULE_URL, PANEL_MODULE_URL, PANEL_STATIC_URL_PATH, PANEL_URL_PATH
 
 _WWW_DIR = Path(__file__).parent / "www"
 
@@ -30,6 +31,15 @@ async def async_register_static_path(hass: HomeAssistant) -> None:
     await hass.http.async_register_static_paths(
         [StaticPathConfig(PANEL_STATIC_URL_PATH, str(_WWW_DIR), True)]
     )
+
+
+def async_register_card(hass: HomeAssistant) -> None:
+    """Auto-load the read-only meal-planner-card on every dashboard page.
+
+    Call once per HA process (from async_setup) — calling this twice
+    would load (and customElements.define) the card JS twice.
+    """
+    add_extra_js_url(hass, CARD_MODULE_URL)
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:

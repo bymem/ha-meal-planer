@@ -20,3 +20,9 @@ SIGNAL_UPDATE = "meal_planner_update"
 PANEL_URL_PATH = "meal-planner"
 PANEL_STATIC_URL_PATH = "/meal_planner_files"
 PANEL_MODULE_URL = f"{PANEL_STATIC_URL_PATH}/meal-planner-panel.js"
+
+# Dashboard card — same www/ folder, same static path, but auto-loaded
+# on every frontend page (add_extra_js_url) instead of being registered
+# as a sidebar panel, so it's available to any Lovelace dashboard
+# without the user having to add a resource manually.
+CARD_MODULE_URL = f"{PANEL_STATIC_URL_PATH}/meal-planner-card.js"

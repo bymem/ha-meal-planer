@@ -5,10 +5,11 @@ A Home Assistant custom integration for planning meals as a simple **queue** —
 ## Features
 
 - Sidebar panel to manage your meal queue: add, edit, reorder (drag & drop), mark eaten, delete
+- Read-only `meal-planner-card` for any dashboard, showing today/tomorrow and (optionally) the full queue
 - Freezer flag per meal, so you know what to defrost ahead of time
 - `sensor.meal_planner_today` and `sensor.meal_planner_tomorrow` for use in automations/dashboards
 - REST API and HA services for scripting your own automations
-- No polling — sensors update instantly on any change
+- No polling — sensors and the dashboard card update instantly on any change
 
 ## Installation (via HACS)
 
@@ -18,6 +19,18 @@ A Home Assistant custom integration for planning meals as a simple **queue** —
 4. Install "Meal Planner" via HACS → restart HA
 5. Go to **Settings → Devices & Services → Add Integration**, search for "Meal Planner" and confirm setup (no configuration needed)
 6. Meal Planner appears in the sidebar
+
+## Dashboard Card
+
+`meal-planner-card` is auto-loaded on every dashboard — no manual resource step needed. Add it via the dashboard UI editor ("Add card" → search "Meal Planner"), or by YAML:
+
+```yaml
+type: custom:meal-planner-card
+show_full_list: true
+show_freezer_flag: true
+```
+
+Both options also show up as toggles in the card's own GUI editor. It's read-only — use the sidebar panel or services to make changes.
 
 ## Services
 
