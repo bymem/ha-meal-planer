@@ -1,0 +1,51 @@
+add_meal:
+  name: Add meal
+  description: Adds a meal to the end of the queue.
+  fields:
+    name:
+      name: Name
+      description: The meal's name.
+      required: true
+      example: "Pasta Bolognese"
+      selector:
+        text:
+    in_freezer:
+      name: In freezer
+      description: Whether the meal is currently stored in the freezer.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+mark_eaten:
+  name: Mark eaten
+  description: Marks a meal as eaten and moves it to the end of the queue.
+  fields:
+    meal_id:
+      name: Meal ID
+      description: The ID of the meal to mark as eaten.
+      required: true
+      selector:
+        text:
+
+delete_meal:
+  name: Delete meal
+  description: Removes a meal from the queue.
+  fields:
+    meal_id:
+      name: Meal ID
+      description: The ID of the meal to delete.
+      required: true
+      selector:
+        text:
+
+reorder_meals:
+  name: Reorder meals
+  description: Reorders the active meal queue.
+  fields:
+    ids:
+      name: Meal IDs
+      description: The full ordered list of meal IDs for the active queue.
+      required: true
+      selector:
+        object:

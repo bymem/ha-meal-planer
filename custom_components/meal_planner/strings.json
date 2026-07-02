@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Meal Planner",
+        "description": "Meal Planner needs no configuration — just confirm to add it. You'll get a sidebar panel plus sensor.meal_planner_today and sensor.meal_planner_tomorrow."
+      }
+    },
+    "abort": {
+      "already_configured": "Meal Planner is already set up."
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "domain": "meal_planner",
+  "name": "Meal Planner",
+  "version": "1.0.0",
+  "config_flow": true,
+  "documentation": "https://github.com/YOUR_USERNAME/ha-meal-planner",
+  "issue_tracker": "https://github.com/YOUR_USERNAME/ha-meal-planner/issues",
+  "dependencies": ["http", "frontend"],
+  "codeowners": ["@YOUR_USERNAME"],
+  "requirements": [],
+  "iot_class": "local_push",
+  "hacs": "1.0.0"
+}
