@@ -60,6 +60,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     _register_http_views(hass, storage)
     _register_services(hass, storage)
+    await panel.async_register_static_path(hass)
 
     return True
 

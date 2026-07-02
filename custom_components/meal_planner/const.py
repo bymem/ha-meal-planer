@@ -11,5 +11,12 @@ STORAGE_VERSION = 1
 SIGNAL_UPDATE = "meal_planner_update"
 
 # Frontend panel
+#
+# HACS's "integration" category only copies custom_components/ into the
+# HA config dir — it does not manage a top-level www/community/ folder
+# (that convention is for "plugin"/Lovelace-card category repos). So the
+# panel JS ships inside the integration package itself, and we serve it
+# via our own static path rather than relying on HACS's /hacsfiles/.
 PANEL_URL_PATH = "meal-planner"
-PANEL_MODULE_URL = "/hacsfiles/meal_planner/meal-planner-panel.js"
+PANEL_STATIC_URL_PATH = "/meal_planner_files"
+PANEL_MODULE_URL = f"{PANEL_STATIC_URL_PATH}/meal-planner-panel.js"
