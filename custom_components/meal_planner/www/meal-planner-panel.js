@@ -195,7 +195,10 @@ class MealPlannerPanel extends HTMLElement {
     return `
       <form class="add-form" id="add-form">
         <input type="text" id="add-name" placeholder="Meal name" required />
-        <button type="button" class="toggle-btn" id="add-in-freezer-toggle">Freezer</button>
+        <div class="switch-wrap">
+          <span class="switch-label">Freezer</span>
+          <button type="button" class="switch" id="add-in-freezer-toggle" role="switch" aria-checked="false"></button>
+        </div>
         <button type="submit" class="btn primary">Add</button>
         <button type="button" class="btn" id="add-cancel">Cancel</button>
       </form>
@@ -207,7 +210,15 @@ class MealPlannerPanel extends HTMLElement {
       <div class="card" draggable="true" data-id="${meal.id}">
         <span class="drag-handle" title="Drag to reorder">≡</span>
         <span class="name" data-id="${meal.id}">${this._escape(meal.name)}</span>
-        <button class="toggle-btn freezer-toggle ${meal.in_freezer ? "active" : ""}" data-id="${meal.id}">Freezer</button>
+        <div class="switch-wrap">
+          <span class="switch-label">Freezer</span>
+          <button
+            class="switch freezer-toggle"
+            data-id="${meal.id}"
+            role="switch"
+            aria-checked="${meal.in_freezer ? "true" : "false"}"
+          ></button>
+        </div>
         <button class="btn eat-btn" data-id="${meal.id}">Mark eaten</button>
         <button class="btn edit-btn" data-id="${meal.id}">Edit</button>
         <button class="btn danger delete-btn" data-id="${meal.id}">Delete</button>
@@ -246,15 +257,15 @@ class MealPlannerPanel extends HTMLElement {
       addForm.addEventListener("submit", (ev) => {
         ev.preventDefault();
         const name = root.getElementById("add-name").value.trim();
-        const inFreezer = root
-          .getElementById("add-in-freezer-toggle")
-          .classList.contains("active");
+        const inFreezer =
+          root.getElementById("add-in-freezer-toggle").getAttribute("aria-checked") === "true";
         if (name) {
           this._addMeal(name, inFreezer);
         }
       });
       root.getElementById("add-in-freezer-toggle").addEventListener("click", (ev) => {
-        ev.currentTarget.classList.toggle("active");
+        const isOn = ev.currentTarget.getAttribute("aria-checked") === "true";
+        ev.currentTarget.setAttribute("aria-checked", String(!isOn));
       });
       root.getElementById("add-cancel").addEventListener("click", () => {
         this._addFormOpen = false;
@@ -410,8 +421,12 @@ class MealPlannerPanel extends HTMLElement {
       .btn.primary { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); border-color: transparent; }
       .btn.danger { color: var(--error-color, #db4437); border-color: var(--error-color, #db4437); }
       .btn.danger:hover { background: var(--error-color, #db4437); color: #fff; }
-      .toggle-btn { padding: 8px 14px; border-radius: 16px; border: 1px solid var(--divider-color, #ccc); background: var(--card-background-color, #fff); color: var(--primary-text-color); cursor: pointer; font-size: 0.9em; }
-      .toggle-btn.active { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); border-color: transparent; }
+      .switch-wrap { display: flex; align-items: center; gap: 6px; }
+      .switch-label { font-size: 0.8em; opacity: 0.75; }
+      .switch { position: relative; width: 36px; height: 20px; padding: 0; border: none; border-radius: 10px; background: var(--switch-unchecked-track-color, #939393); cursor: pointer; flex-shrink: 0; transition: background-color 0.15s ease; }
+      .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); transition: transform 0.15s ease; }
+      .switch[aria-checked="true"] { background: var(--primary-color, #03a9f4); }
+      .switch[aria-checked="true"]::after { transform: translateX(16px); }
       .today-tomorrow { display: flex; gap: 16px; margin-bottom: 16px; }
       .slot { flex: 1; padding: 12px; border-radius: 8px; background: var(--card-background-color, #fff); box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,0.12)); }
       .slot-label { display: block; font-size: 0.85em; opacity: 0.7; }
