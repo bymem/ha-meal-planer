@@ -181,12 +181,12 @@ class MealPlannerPanel extends HTMLElement {
       <div class="slot">
         <span class="slot-label">Today</span>
         <span class="slot-value">${this._escape(today ? today.state : "—")}</span>
-        ${today && today.attributes.in_freezer ? '<span class="freezer-badge">🧊</span>' : ""}
+        ${today && today.attributes.in_freezer ? '<span class="freezer-badge">Freezer</span>' : ""}
       </div>
       <div class="slot">
         <span class="slot-label">Tomorrow</span>
         <span class="slot-value">${this._escape(tomorrow ? tomorrow.state : "—")}</span>
-        ${tomorrow && tomorrow.attributes.in_freezer ? '<span class="freezer-badge">🧊</span>' : ""}
+        ${tomorrow && tomorrow.attributes.in_freezer ? '<span class="freezer-badge">Freezer</span>' : ""}
       </div>
     `;
   }
@@ -195,9 +195,7 @@ class MealPlannerPanel extends HTMLElement {
     return `
       <form class="add-form" id="add-form">
         <input type="text" id="add-name" placeholder="Meal name" required />
-        <label class="freezer-check">
-          <input type="checkbox" id="add-in-freezer" /> 🧊 In freezer
-        </label>
+        <button type="button" class="toggle-btn" id="add-in-freezer-toggle">Freezer</button>
         <button type="submit" class="btn primary">Add</button>
         <button type="button" class="btn" id="add-cancel">Cancel</button>
       </form>
@@ -209,13 +207,10 @@ class MealPlannerPanel extends HTMLElement {
       <div class="card" draggable="true" data-id="${meal.id}">
         <span class="drag-handle" title="Drag to reorder">≡</span>
         <span class="name" data-id="${meal.id}">${this._escape(meal.name)}</span>
-        <label class="freezer-check">
-          <input type="checkbox" class="freezer-toggle" data-id="${meal.id}" ${meal.in_freezer ? "checked" : ""} />
-          🧊
-        </label>
-        <button class="icon-btn eat-btn" data-id="${meal.id}" title="Mark eaten">✓</button>
-        <button class="icon-btn edit-btn" data-id="${meal.id}" title="Edit">✎</button>
-        <button class="icon-btn delete-btn" data-id="${meal.id}" title="Delete">🗑</button>
+        <button class="toggle-btn freezer-toggle ${meal.in_freezer ? "active" : ""}" data-id="${meal.id}">Freezer</button>
+        <button class="btn eat-btn" data-id="${meal.id}">Mark eaten</button>
+        <button class="btn edit-btn" data-id="${meal.id}">Edit</button>
+        <button class="btn danger delete-btn" data-id="${meal.id}">Delete</button>
       </div>
     `;
   }
@@ -224,8 +219,8 @@ class MealPlannerPanel extends HTMLElement {
     return `
       <div class="card eaten" data-id="${meal.id}">
         <span class="name">${this._escape(meal.name)}</span>
-        ${meal.in_freezer ? '<span class="freezer-badge">🧊</span>' : ""}
-        <button class="icon-btn delete-btn" data-id="${meal.id}" title="Delete">🗑</button>
+        ${meal.in_freezer ? '<span class="freezer-badge">Freezer</span>' : ""}
+        <button class="btn danger delete-btn" data-id="${meal.id}">Delete</button>
       </div>
     `;
   }
@@ -251,10 +246,15 @@ class MealPlannerPanel extends HTMLElement {
       addForm.addEventListener("submit", (ev) => {
         ev.preventDefault();
         const name = root.getElementById("add-name").value.trim();
-        const inFreezer = root.getElementById("add-in-freezer").checked;
+        const inFreezer = root
+          .getElementById("add-in-freezer-toggle")
+          .classList.contains("active");
         if (name) {
           this._addMeal(name, inFreezer);
         }
+      });
+      root.getElementById("add-in-freezer-toggle").addEventListener("click", (ev) => {
+        ev.currentTarget.classList.toggle("active");
       });
       root.getElementById("add-cancel").addEventListener("click", () => {
         this._addFormOpen = false;
@@ -268,8 +268,10 @@ class MealPlannerPanel extends HTMLElement {
     });
 
     root.querySelectorAll(".freezer-toggle").forEach((el) => {
-      el.addEventListener("change", (ev) => {
-        this._updateMeal(ev.target.dataset.id, { in_freezer: ev.target.checked });
+      el.addEventListener("click", (ev) => {
+        const id = ev.currentTarget.dataset.id;
+        const meal = this._meals.find((m) => m.id === id);
+        this._updateMeal(id, { in_freezer: !(meal && meal.in_freezer) });
       });
     });
 
@@ -403,8 +405,13 @@ class MealPlannerPanel extends HTMLElement {
       .panel { max-width: 720px; margin: 0 auto; padding: 16px; color: var(--primary-text-color); }
       .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
       h1 { font-size: 1.5em; margin: 0; }
-      .btn { padding: 8px 14px; border-radius: 4px; border: 1px solid var(--divider-color, #ccc); background: var(--card-background-color, #fff); color: var(--primary-text-color); cursor: pointer; }
+      .btn { padding: 8px 14px; border-radius: 4px; border: 1px solid var(--divider-color, #ccc); background: var(--card-background-color, #fff); color: var(--primary-text-color); cursor: pointer; font-size: 0.9em; }
+      .btn:hover { background: rgba(0, 0, 0, 0.06); }
       .btn.primary { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); border-color: transparent; }
+      .btn.danger { color: var(--error-color, #db4437); border-color: var(--error-color, #db4437); }
+      .btn.danger:hover { background: var(--error-color, #db4437); color: #fff; }
+      .toggle-btn { padding: 8px 14px; border-radius: 16px; border: 1px solid var(--divider-color, #ccc); background: var(--card-background-color, #fff); color: var(--primary-text-color); cursor: pointer; font-size: 0.9em; }
+      .toggle-btn.active { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); border-color: transparent; }
       .today-tomorrow { display: flex; gap: 16px; margin-bottom: 16px; }
       .slot { flex: 1; padding: 12px; border-radius: 8px; background: var(--card-background-color, #fff); box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,0.12)); }
       .slot-label { display: block; font-size: 0.85em; opacity: 0.7; }
@@ -421,11 +428,8 @@ class MealPlannerPanel extends HTMLElement {
       .drag-handle { cursor: grab; opacity: 0.6; }
       .name { flex: 1; }
       .name-edit { flex: 1; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--divider-color, #ccc); }
-      .freezer-check { display: flex; align-items: center; gap: 4px; }
-      .icon-btn { border: none; background: transparent; cursor: pointer; font-size: 1.1em; padding: 4px 6px; border-radius: 4px; }
-      .icon-btn:hover { background: rgba(0,0,0,0.06); }
-      .icon-btn.confirming { background: var(--error-color, #db4437); color: #fff; font-size: 0.85em; }
-      .freezer-badge { opacity: 0.8; }
+      .btn.confirming { background: var(--error-color, #db4437); color: #fff; border-color: transparent; }
+      .freezer-badge { font-size: 0.8em; padding: 2px 8px; border-radius: 10px; background: var(--divider-color, #e0e0e0); opacity: 0.85; }
       .show-eaten { display: flex; align-items: center; gap: 6px; margin: 14px 0; cursor: pointer; }
       .eaten-list { margin-top: 8px; }
     `;
