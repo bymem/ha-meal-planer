@@ -22,11 +22,26 @@ class MealPlannerPanel extends HTMLElement {
     this._dragMealId = null;
 
     this.attachShadow({ mode: "open" });
+
+    // Closes any open per-meal action menu when clicking anywhere
+    // outside it — attached on document since the click may land
+    // outside this element entirely.
+    this._onDocumentClick = (ev) => {
+      const path = ev.composedPath();
+      if (!path.some((el) => el.classList && el.classList.contains("menu-wrap"))) {
+        this._closeAllMenus();
+      }
+    };
   }
 
   connectedCallback() {
     this._render();
     this._fetchMeals();
+    document.addEventListener("click", this._onDocumentClick);
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener("click", this._onDocumentClick);
   }
 
   // Called by Home Assistant with the current hass object whenever
@@ -230,25 +245,33 @@ class MealPlannerPanel extends HTMLElement {
           <ha-icon icon="mdi:drag"></ha-icon>
         </span>
         <span class="name" data-id="${meal.id}">${this._escape(meal.name)}</span>
-        <div class="card-actions">
-          <div class="switch-wrap">
-            <span class="switch-label">Freezer</span>
-            <button
-              class="switch freezer-toggle"
-              data-id="${meal.id}"
-              role="switch"
-              aria-checked="${meal.in_freezer ? "true" : "false"}"
-            ></button>
+        <div class="switch-wrap">
+          <span class="switch-label">Freezer</span>
+          <button
+            class="switch freezer-toggle"
+            data-id="${meal.id}"
+            role="switch"
+            aria-checked="${meal.in_freezer ? "true" : "false"}"
+          ></button>
+        </div>
+        <div class="menu-wrap">
+          <ha-icon-button class="menu-toggle" data-id="${meal.id}" label="Actions">
+            <ha-icon icon="mdi:dots-vertical"></ha-icon>
+          </ha-icon-button>
+          <div class="menu" hidden>
+            <button type="button" class="menu-item eat-btn" data-id="${meal.id}">
+              <ha-icon icon="mdi:check"></ha-icon>
+              <span class="menu-item-label">Mark eaten</span>
+            </button>
+            <button type="button" class="menu-item edit-btn" data-id="${meal.id}">
+              <ha-icon icon="mdi:pencil"></ha-icon>
+              <span class="menu-item-label">Edit</span>
+            </button>
+            <button type="button" class="menu-item danger delete-btn" data-id="${meal.id}">
+              <ha-icon icon="mdi:delete"></ha-icon>
+              <span class="menu-item-label">Delete</span>
+            </button>
           </div>
-          <ha-icon-button class="eat-btn" data-id="${meal.id}" label="Mark eaten">
-            <ha-icon icon="mdi:check"></ha-icon>
-          </ha-icon-button>
-          <ha-icon-button class="edit-btn" data-id="${meal.id}" label="Edit">
-            <ha-icon icon="mdi:pencil"></ha-icon>
-          </ha-icon-button>
-          <ha-icon-button class="danger delete-btn" data-id="${meal.id}" label="Delete">
-            <ha-icon icon="mdi:delete"></ha-icon>
-          </ha-icon-button>
         </div>
       </div>
     `;
@@ -259,11 +282,9 @@ class MealPlannerPanel extends HTMLElement {
       <div class="card eaten" data-id="${meal.id}">
         <span class="name">${this._escape(meal.name)}</span>
         ${meal.in_freezer ? '<span class="freezer-badge">Freezer</span>' : ""}
-        <div class="card-actions">
-          <ha-icon-button class="danger delete-btn" data-id="${meal.id}" label="Delete">
-            <ha-icon icon="mdi:delete"></ha-icon>
-          </ha-icon-button>
-        </div>
+        <ha-icon-button class="danger delete-btn" data-id="${meal.id}" label="Delete">
+          <ha-icon icon="mdi:delete"></ha-icon>
+        </ha-icon-button>
       </div>
     `;
   }
@@ -327,6 +348,7 @@ class MealPlannerPanel extends HTMLElement {
     root.querySelectorAll(".edit-btn").forEach((el) => {
       el.addEventListener("click", (ev) => {
         this._startEdit(ev.currentTarget.dataset.id);
+        this._closeAllMenus();
       });
     });
 
@@ -336,7 +358,33 @@ class MealPlannerPanel extends HTMLElement {
       });
     });
 
+    this._attachMenuToggles();
     this._attachDragListeners();
+  }
+
+  // ---- Per-meal action menu (kebab) ------------------------------------
+
+  _attachMenuToggles() {
+    const root = this.shadowRoot;
+    root.querySelectorAll(".menu-toggle").forEach((toggle) => {
+      toggle.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const menu = toggle.nextElementSibling;
+        const wasHidden = menu.hidden;
+        this._closeAllMenus();
+        menu.hidden = !wasHidden;
+      });
+    });
+  }
+
+  _closeAllMenus() {
+    const root = this.shadowRoot;
+    if (!root) {
+      return;
+    }
+    root.querySelectorAll(".menu").forEach((menu) => {
+      menu.hidden = true;
+    });
   }
 
   _startEdit(id) {
@@ -384,22 +432,35 @@ class MealPlannerPanel extends HTMLElement {
     this._editDebounceTimers.set(id, timer);
   }
 
+  // Delete lives as a plain ha-icon-button on eaten cards, but as a
+  // labelled .menu-item inside the kebab menu on active cards — handle
+  // both shapes here rather than duplicating the confirm-step logic.
   _confirmDelete(id, buttonEl) {
     if (buttonEl.dataset.confirming === "true") {
       this._deleteMeal(id);
+      this._closeAllMenus();
       return;
     }
     const icon = buttonEl.querySelector("ha-icon");
+    const label = buttonEl.querySelector(".menu-item-label");
     const originalIcon = icon.getAttribute("icon");
     buttonEl.dataset.confirming = "true";
-    buttonEl.label = "Confirm delete?";
     icon.setAttribute("icon", "mdi:delete-alert");
+    if (label) {
+      label.textContent = "Confirm delete?";
+    } else {
+      buttonEl.label = "Confirm delete?";
+    }
     buttonEl.classList.add("confirming");
     setTimeout(() => {
       if (buttonEl.isConnected) {
         buttonEl.dataset.confirming = "false";
-        buttonEl.label = "Delete";
         icon.setAttribute("icon", originalIcon);
+        if (label) {
+          label.textContent = "Delete";
+        } else {
+          buttonEl.label = "Delete";
+        }
         buttonEl.classList.remove("confirming");
       }
     }, 3000);
@@ -480,16 +541,32 @@ class MealPlannerPanel extends HTMLElement {
       .drag-handle { display: flex; cursor: grab; opacity: 0.6; flex-shrink: 0; }
       .name { flex: 1 1 100px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .name-edit { flex: 1; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--divider-color, #ccc); }
-      .card-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; flex-wrap: wrap; }
       .freezer-badge { font-size: 0.8em; padding: 2px 8px; border-radius: 10px; background: var(--divider-color, #e0e0e0); opacity: 0.85; }
       .show-eaten { display: flex; align-items: center; gap: 6px; margin: 14px 0; cursor: pointer; }
       .eaten-list { margin-top: 8px; }
 
+      .menu-wrap { position: relative; flex-shrink: 0; }
+      .menu {
+        position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 10;
+        min-width: 170px; padding: 4px; border-radius: 8px;
+        background: var(--card-background-color, #fff);
+        box-shadow: var(--dialog-box-shadow, 0 2px 8px rgba(0, 0, 0, 0.3));
+        display: flex; flex-direction: column;
+      }
+      .menu[hidden] { display: none; }
+      .menu-item {
+        display: flex; align-items: center; gap: 10px; width: 100%;
+        padding: 8px 10px; border: none; border-radius: 6px; background: none;
+        color: var(--primary-text-color); font-size: 0.9em; text-align: left; cursor: pointer;
+      }
+      .menu-item:hover { background: rgba(0, 0, 0, 0.06); }
+      .menu-item.danger { color: var(--error-color, #db4437); }
+      .menu-item.confirming { background: var(--error-color, #db4437); color: #fff; }
+      .menu-item ha-icon { --mdc-icon-size: 20px; flex-shrink: 0; }
+
       /* Home Assistant sets .narrow on this element for mobile/small
          viewports (see the narrow property setter above). */
       :host([narrow]) .panel { padding: 8px; }
-      :host([narrow]) .today-tomorrow { flex-direction: column; gap: 8px; }
-      :host([narrow]) .name { white-space: normal; }
     `;
   }
 }
