@@ -17,6 +17,7 @@ class MealPlannerPanel extends HTMLElement {
     this._addFormOpen = false;
     this._error = null;
     this._loading = true;
+    this._narrow = false;
     this._editDebounceTimers = new Map();
     this._dragMealId = null;
 
@@ -43,6 +44,19 @@ class MealPlannerPanel extends HTMLElement {
 
   get hass() {
     return this._hass;
+  }
+
+  // Home Assistant sets this property on every custom panel element to
+  // indicate mobile/narrow-viewport layout. Reflected as a host
+  // attribute so :host([narrow]) rules in _styles() can react to it
+  // without needing a full re-render.
+  set narrow(value) {
+    this._narrow = !!value;
+    this.toggleAttribute("narrow", this._narrow);
+  }
+
+  get narrow() {
+    return this._narrow;
   }
 
   // ---- Data loading -------------------------------------------------
@@ -135,10 +149,14 @@ class MealPlannerPanel extends HTMLElement {
       <style>${this._styles()}</style>
       <div class="panel">
         <div class="header">
+          <ha-menu-button></ha-menu-button>
           <h1>Meal Planner</h1>
-          <button class="btn primary" id="add-toggle">
-            ${this._addFormOpen ? "Cancel" : "Add meal"}
-          </button>
+          <ha-icon-button
+            id="add-toggle"
+            label="${this._addFormOpen ? "Cancel" : "Add meal"}"
+          >
+            <ha-icon icon="${this._addFormOpen ? "mdi:close" : "mdi:plus"}"></ha-icon>
+          </ha-icon-button>
         </div>
 
         <div class="today-tomorrow" id="today-tomorrow"></div>
@@ -208,20 +226,30 @@ class MealPlannerPanel extends HTMLElement {
   _renderMealCard(meal) {
     return `
       <div class="card" draggable="true" data-id="${meal.id}">
-        <span class="drag-handle" title="Drag to reorder">≡</span>
+        <span class="drag-handle" title="Drag to reorder">
+          <ha-icon icon="mdi:drag"></ha-icon>
+        </span>
         <span class="name" data-id="${meal.id}">${this._escape(meal.name)}</span>
-        <div class="switch-wrap">
-          <span class="switch-label">Freezer</span>
-          <button
-            class="switch freezer-toggle"
-            data-id="${meal.id}"
-            role="switch"
-            aria-checked="${meal.in_freezer ? "true" : "false"}"
-          ></button>
+        <div class="card-actions">
+          <div class="switch-wrap">
+            <span class="switch-label">Freezer</span>
+            <button
+              class="switch freezer-toggle"
+              data-id="${meal.id}"
+              role="switch"
+              aria-checked="${meal.in_freezer ? "true" : "false"}"
+            ></button>
+          </div>
+          <ha-icon-button class="eat-btn" data-id="${meal.id}" label="Mark eaten">
+            <ha-icon icon="mdi:check"></ha-icon>
+          </ha-icon-button>
+          <ha-icon-button class="edit-btn" data-id="${meal.id}" label="Edit">
+            <ha-icon icon="mdi:pencil"></ha-icon>
+          </ha-icon-button>
+          <ha-icon-button class="danger delete-btn" data-id="${meal.id}" label="Delete">
+            <ha-icon icon="mdi:delete"></ha-icon>
+          </ha-icon-button>
         </div>
-        <button class="btn eat-btn" data-id="${meal.id}">Mark eaten</button>
-        <button class="btn edit-btn" data-id="${meal.id}">Edit</button>
-        <button class="btn danger delete-btn" data-id="${meal.id}">Delete</button>
       </div>
     `;
   }
@@ -231,7 +259,11 @@ class MealPlannerPanel extends HTMLElement {
       <div class="card eaten" data-id="${meal.id}">
         <span class="name">${this._escape(meal.name)}</span>
         ${meal.in_freezer ? '<span class="freezer-badge">Freezer</span>' : ""}
-        <button class="btn danger delete-btn" data-id="${meal.id}">Delete</button>
+        <div class="card-actions">
+          <ha-icon-button class="danger delete-btn" data-id="${meal.id}" label="Delete">
+            <ha-icon icon="mdi:delete"></ha-icon>
+          </ha-icon-button>
+        </div>
       </div>
     `;
   }
@@ -357,14 +389,17 @@ class MealPlannerPanel extends HTMLElement {
       this._deleteMeal(id);
       return;
     }
+    const icon = buttonEl.querySelector("ha-icon");
+    const originalIcon = icon.getAttribute("icon");
     buttonEl.dataset.confirming = "true";
-    const original = buttonEl.textContent;
-    buttonEl.textContent = "Confirm?";
+    buttonEl.label = "Confirm delete?";
+    icon.setAttribute("icon", "mdi:delete-alert");
     buttonEl.classList.add("confirming");
     setTimeout(() => {
       if (buttonEl.isConnected) {
         buttonEl.dataset.confirming = "false";
-        buttonEl.textContent = original;
+        buttonEl.label = "Delete";
+        icon.setAttribute("icon", originalIcon);
         buttonEl.classList.remove("confirming");
       }
     }, 3000);
@@ -414,13 +449,15 @@ class MealPlannerPanel extends HTMLElement {
     return `
       :host { display: block; font-family: var(--paper-font-body1_-_font-family, sans-serif); }
       .panel { max-width: 720px; margin: 0 auto; padding: 16px; color: var(--primary-text-color); }
-      .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-      h1 { font-size: 1.5em; margin: 0; }
+      .header { display: flex; align-items: center; gap: 4px; margin-bottom: 12px; }
+      .header ha-menu-button { flex-shrink: 0; margin: 0 4px 0 -8px; }
+      h1 { font-size: 1.5em; margin: 0; flex: 1; }
       .btn { padding: 8px 14px; border-radius: 4px; border: 1px solid var(--divider-color, #ccc); background: var(--card-background-color, #fff); color: var(--primary-text-color); cursor: pointer; font-size: 0.9em; }
       .btn:hover { background: rgba(0, 0, 0, 0.06); }
       .btn.primary { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); border-color: transparent; }
-      .btn.danger { color: var(--error-color, #db4437); border-color: var(--error-color, #db4437); }
-      .btn.danger:hover { background: var(--error-color, #db4437); color: #fff; }
+      ha-icon-button { color: var(--primary-text-color); flex-shrink: 0; }
+      ha-icon-button.danger { color: var(--error-color, #db4437); }
+      ha-icon-button.confirming { color: #fff; background: var(--error-color, #db4437); border-radius: 50%; }
       .switch-wrap { display: flex; align-items: center; gap: 6px; }
       .switch-label { font-size: 0.8em; opacity: 0.75; }
       .switch { position: relative; width: 36px; height: 20px; padding: 0; border: none; border-radius: 10px; background: var(--switch-unchecked-track-color, #939393); cursor: pointer; flex-shrink: 0; transition: background-color 0.15s ease; }
@@ -437,16 +474,22 @@ class MealPlannerPanel extends HTMLElement {
       .add-form { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
       .add-form input[type="text"] { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--divider-color, #ccc); min-width: 160px; }
       .list { display: flex; flex-direction: column; gap: 8px; }
-      .card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--card-background-color, #fff); box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,0.12)); }
+      .card { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: var(--card-background-color, #fff); box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,0.12)); flex-wrap: wrap; }
       .card.dragging { opacity: 0.4; }
       .card.eaten { opacity: 0.55; }
-      .drag-handle { cursor: grab; opacity: 0.6; }
-      .name { flex: 1; }
+      .drag-handle { display: flex; cursor: grab; opacity: 0.6; flex-shrink: 0; }
+      .name { flex: 1 1 100px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .name-edit { flex: 1; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--divider-color, #ccc); }
-      .btn.confirming { background: var(--error-color, #db4437); color: #fff; border-color: transparent; }
+      .card-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; flex-wrap: wrap; }
       .freezer-badge { font-size: 0.8em; padding: 2px 8px; border-radius: 10px; background: var(--divider-color, #e0e0e0); opacity: 0.85; }
       .show-eaten { display: flex; align-items: center; gap: 6px; margin: 14px 0; cursor: pointer; }
       .eaten-list { margin-top: 8px; }
+
+      /* Home Assistant sets .narrow on this element for mobile/small
+         viewports (see the narrow property setter above). */
+      :host([narrow]) .panel { padding: 8px; }
+      :host([narrow]) .today-tomorrow { flex-direction: column; gap: 8px; }
+      :host([narrow]) .name { white-space: normal; }
     `;
   }
 }
